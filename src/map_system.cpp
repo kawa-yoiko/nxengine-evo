@@ -43,7 +43,6 @@ static struct
   const char *bannertext;
   int textx, texty;
 
-  bool lastbuttondown;
 } ms;
 
 // expand/contract effect
@@ -123,7 +122,6 @@ bool ms_init(int return_to_mode)
 {
   memset(&ms, 0, sizeof(ms));
   ms.return_gm      = return_to_mode;
-  ms.lastbuttondown = true;
   ms.w              = map.xsize;
   ms.h              = map.ysize;
 
@@ -149,7 +147,6 @@ void ms_close(void)
 void ms_tick(void)
 {
   DrawScene();
-  draw_banner();
 
   if (ms.state == MS_EXPANDING)
   {
@@ -157,8 +154,44 @@ void ms_tick(void)
 
     if (ms.expandframe > EXPAND_LENGTH)
       ms.state = MS_DISPLAYED;
-    else
-      draw_expand();
+  }
+
+  if (ms.state == MS_DISPLAYED)
+  {
+    if (ms.current_row < map.ysize)
+      ms.current_row++;
+    if (ms.current_row < map.ysize)
+      ms.current_row++;
+
+    // you-are-here dot
+    ms.timer++;
+
+    // dismissal
+    if (justpushed(JUMPKEY) || justpushed(MAPSYSTEMKEY))
+    {
+      ms.state = MS_CONTRACTING;
+    }
+  }
+  else if (ms.state == MS_CONTRACTING)
+  {
+    ms.expandframe--;
+
+    if (ms.expandframe <= 0)
+    {
+      int param = (ms.return_gm == GM_INVENTORY) ? 1 : 0;
+      game.setmode(ms.return_gm, param);
+    }
+  }
+  ms_draw();
+}
+
+void ms_draw(void)
+{
+  draw_banner();
+
+  if (ms.state == MS_EXPANDING)
+  {
+    draw_expand();
   }
 
   if (ms.state == MS_DISPLAYED)
@@ -175,38 +208,13 @@ void ms_tick(void)
         draw_sprite(ms.x + x, ms.y + y, SPR_MAP_PIXELS, get_color(tc));
       }
     }
-    if (ms.current_row < map.ysize)
-      ms.current_row++;
-    if (ms.current_row < map.ysize)
-      ms.current_row++;
 
     // you-are-here dot
-    if (++ms.timer & 8)
+    if (ms.timer & 8)
       draw_sprite(ms.px, ms.py, SPR_MAP_PIXELS, 4);
-
-    // dismissal
-    if (ms.lastbuttondown)
-    {
-      if (!buttondown())
-        ms.lastbuttondown = false;
-    }
-    else if (buttondown())
-    {
-      ms.state = MS_CONTRACTING;
-    }
   }
   else if (ms.state == MS_CONTRACTING)
   {
-    ms.expandframe--;
-
-    if (ms.expandframe <= 0)
-    {
-      int param = (ms.return_gm == GM_INVENTORY) ? 1 : 0;
-      game.setmode(ms.return_gm, param);
-    }
-    else
-    {
-      draw_expand();
-    }
+    draw_expand();
   }
 }
