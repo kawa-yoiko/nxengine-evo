@@ -2,20 +2,11 @@
 #include "debug.h"
 
 #include "game.h"
-#include "graphics/font.h"
-#include "graphics/graphics.h"
-#include "graphics/sprites.h"
+#include "graphics/Renderer.h"
 #include "input.h"
 #include "nx.h"
-
-#include <cstring>
-#include <stdarg.h>
-#include <string>
-#include <vector>
-using namespace Graphics;
-using namespace Sprites;
 #include "common/misc.h"
-#include "common/stat.h"
+#include "Utils/Logger.h"
 #include "console.h"
 #include "map.h"
 #include "object.h"
@@ -24,6 +15,14 @@ using namespace Sprites;
 #include "settings.h"
 #include "siflib/sif.h"
 #include "sound/SoundManager.h"
+
+#include <cstring>
+#include <stdarg.h>
+#include <string>
+#include <vector>
+#include <SDL.h>
+
+using namespace NXE::Graphics;
 
 #define MAX_DEBUG_MARKS 80
 static struct
@@ -117,12 +116,14 @@ void DrawDebug(void)
 #endif
 }
 
+extern Object* bullets[64];
+
 void DrawBoundingBoxes()
 {
   Object *o;
   FOREACH_OBJECT(o)
   {
-    if (o->onscreen || o == player)
+    if ((o->onscreen && !o->invisible) || o == player)
     {
       uint32_t color;
 
@@ -152,6 +153,14 @@ void DrawBoundingBoxes()
       AddDebugMark(o->CenterX(), o->CenterY(), o->CenterX(), o->CenterY(), DM_PIXEL, 255, 0, 255);
     }
   }
+
+  for (int i=0;i<64;i++)
+  {
+    if (bullets[i]!=NULL)
+    {
+      AddDebugMark(bullets[i]->Left(), bullets[i]->Top(), bullets[i]->Right(), bullets[i]->Bottom(), DM_BOX, 0, 0, 255);
+    }
+  }
 }
 
 static void draw_pointlist(Object *o, SIFPointList *points)
@@ -170,10 +179,10 @@ void DrawAttrPoints()
   Object *o;
   FOREACH_OBJECT(o)
   {
-    draw_pointlist(o, &sprites[o->sprite].block_l);
-    draw_pointlist(o, &sprites[o->sprite].block_r);
-    draw_pointlist(o, &sprites[o->sprite].block_u);
-    draw_pointlist(o, &sprites[o->sprite].block_d);
+    draw_pointlist(o, &Renderer::getInstance()->sprites.sprites[o->sprite].block_l);
+    draw_pointlist(o, &Renderer::getInstance()->sprites.sprites[o->sprite].block_r);
+    draw_pointlist(o, &Renderer::getInstance()->sprites.sprites[o->sprite].block_u);
+    draw_pointlist(o, &Renderer::getInstance()->sprites.sprites[o->sprite].block_d);
   }
 }
 
@@ -200,9 +209,9 @@ void debug_draw(void)
   {
     const char *text = DebugList.at(i).c_str();
 
-    int x = (SCREEN_WIDTH - 8) - GetFontWidth(text, true);
-    int y = 4 + (i * (GetFontHeight() + 1));
-    font_draw(x, y, text, 0x00FF00, true);
+    int x = (Renderer::getInstance()->screenWidth - 8) - Renderer::getInstance()->font.getWidth(text);
+    int y = 4 + (i * (Renderer::getInstance()->font.getHeight() + 1));
+    Renderer::getInstance()->font.draw(x, y, text, 0x00FF00, true);
   }
 }
 
@@ -243,7 +252,7 @@ int ObjectNameToType(const char *name_in)
       break;
   }
 
-  char *name = strdup(name_in); // make string writeable
+  char *name = SDL_strdup(name_in); // make string writeable
 
   // some string preprocessing
   for (int i = 0; name[i]; i++)
@@ -273,7 +282,7 @@ int ObjectNameToType(const char *name_in)
     }
   }
 
-  stat("ObjectNameToType: couldn't find object 'OBJ_%s'", searchstring);
+  LOG_DEBUG("ObjectNameToType: couldn't find object 'OBJ_{}'", searchstring);
   free(name);
   return -1;
 }
@@ -332,27 +341,27 @@ void DrawDebugMarks(void)
     switch (debugmarks[i].type)
     {
       case DM_PIXEL:
-        DrawPixel(x, y, r, g, b);
+        Renderer::getInstance()->drawPixel(x, y, r, g, b);
         break;
 
       case DM_CROSSHAIR:
-        DrawPixel(x, y, r, g, b);
-        DrawPixel(x + 1, y, r, g, b);
-        DrawPixel(x - 1, y, r, g, b);
-        DrawPixel(x, y + 1, r, g, b);
-        DrawPixel(x, y - 1, r, g, b);
+        Renderer::getInstance()->drawPixel(x, y, r, g, b);
+        Renderer::getInstance()->drawPixel(x + 1, y, r, g, b);
+        Renderer::getInstance()->drawPixel(x - 1, y, r, g, b);
+        Renderer::getInstance()->drawPixel(x, y + 1, r, g, b);
+        Renderer::getInstance()->drawPixel(x, y - 1, r, g, b);
         break;
 
       case DM_XLINE:
-        FillRect(x, 0, x, SCREEN_HEIGHT, r, g, b);
+        Renderer::getInstance()->fillRect(x, 0, x, Renderer::getInstance()->screenHeight, r, g, b);
         break;
 
       case DM_YLINE:
-        FillRect(0, y, SCREEN_WIDTH, y, r, g, b);
+        Renderer::getInstance()->fillRect(0, y, Renderer::getInstance()->screenWidth, y, r, g, b);
         break;
 
       case DM_BOX:
-        DrawRect(x, y, x2, y2, r, g, b);
+        Renderer::getInstance()->drawRect(x, y, x2, y2, r, g, b);
         break;
     }
   }

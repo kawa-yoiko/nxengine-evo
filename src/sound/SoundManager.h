@@ -8,7 +8,11 @@
 #include <string>
 #include <vector>
 
-#define SAMPLE_RATE 44100
+#if defined(_LOW_END_HARDWARE)
+  #define SAMPLE_RATE 22050
+#else
+  #define SAMPLE_RATE 44100
+#endif
 
 namespace NXE
 {
@@ -135,6 +139,7 @@ public:
   void resume();
   void updateMusicVolume();
   void updateSfxVolume();
+  std::vector<std::string> &music_dir_names();
 
 protected:
   friend class Singleton<SoundManager>;
@@ -149,20 +154,23 @@ private:
   bool _musicIsBoss(uint32_t songno);
   void _start_org_track(int songno, bool resume);
   void _start_ogg_track(int songno, bool resume, std::string dir);
+  void _reloadTrackList();
 
   uint32_t _lastSong    = 0;
   uint32_t _lastSongPos = 0;
   uint32_t _currentSong = 0;
   bool _songlooped      = false;
 
-  std::vector<std::string> _org_names;
+  std::vector<std::string> _music_names;
+  std::vector<bool> _music_loop;
+  std::vector<std::string> _music_dirs;
+  std::vector<std::string> _music_dir_names;
+  std::vector<std::string> _music_playlists;
 
   const char _bossmusic[14] = {4, 7, 10, 11, 15, 16, 17, 18, 21, 22, 31, 33, 35, 0};
-
-  const std::string _org_dir   = "org/";
-  const std::string _ogg_dir   = "Ogg/";
-  const std::string _ogg11_dir = "Ogg11/";
 };
+
+
 
 } // namespace Sound
 } // namespace NXE

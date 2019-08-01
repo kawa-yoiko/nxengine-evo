@@ -1,7 +1,8 @@
 #include "profile.h"
 
 #include "common/misc.h"
-#include "common/stat.h"
+#include "Utils/Logger.h"
+#include "ResourceManager.h"
 #include "nx.h"
 #include "tsc.h"
 
@@ -25,20 +26,20 @@ bool profile_load(const char *pfname, Profile *file)
   int i, curweaponslot;
   FILE *fp;
 
-  stat("Loading profile from %s...", pfname);
+  LOG_INFO("Loading profile from {}", pfname);
 //  memset(file, 0, sizeof(Profile));
   file->wpnOrder.clear();
 
   fp = myfopen(widen(pfname).c_str(), widen("rb").c_str());
   if (!fp)
   {
-    staterr("profile_load: unable to open '%s'", pfname);
+    LOG_ERROR("profile_load: unable to open '{}'", pfname);
     return 1;
   }
 
   if (!fverifystring(fp, "Do041220"))
   {
-    staterr("profile_load: invalid savegame format: '%s'", pfname);
+    LOG_ERROR("profile_load: invalid savegame format: '{}'", pfname);
     fclose(fp);
     return 1;
   }
@@ -118,7 +119,7 @@ bool profile_load(const char *pfname, Profile *file)
   fseek(fp, PF_FLAGS_OFFS, SEEK_SET);
   if (!fverifystring(fp, "FLAG"))
   {
-    staterr("profile_load: missing 'FLAG' marker");
+    LOG_ERROR("profile_load: missing 'FLAG' marker");
     fclose(fp);
     return 1;
   }
@@ -142,7 +143,7 @@ bool profile_save(const char *pfname, Profile *file)
   fp = myfopen(widen(pfname).c_str(), widen("wb").c_str());
   if (!fp)
   {
-    staterr("profile_save: unable to open %s", pfname);
+    LOG_ERROR("profile_save: unable to open {}", pfname);
     return 1;
   }
 
@@ -240,9 +241,8 @@ void c------------------------------() {}
 // returns the filename for a save file given it's number
 char *GetProfileName(int num)
 {
-  char *basepath   = SDL_GetPrefPath("nxengine", "nxengine-evo");
-  std::string prof = std::string(basepath);
-  SDL_free(basepath);
+  std::string prof = ResourceManager::getInstance()->getPrefPath("");
+
   std::string profile;
   if (num == 0)
   {

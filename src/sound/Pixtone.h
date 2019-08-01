@@ -85,7 +85,7 @@ public:
   int playResampled(int32_t chan, int32_t slot, int32_t loop, uint32_t percent);
   void stop(int32_t slot);
 
-  void pxtSoundDone(int32_t channel);
+  void pxtSoundDone(int channel);
 
 protected:
   friend class Singleton<Pixtone>;
@@ -100,8 +100,8 @@ private:
   bool _inited = false;
   struct
   {
-    Mix_Chunk *chunk        = nullptr;
-    Mix_Chunk *resampled    = nullptr;
+    Mix_Chunk *chunk        = NULL;
+    Mix_Chunk *resampled    = NULL;
     uint32_t resampled_rate = SAMPLE_RATE;
     int32_t channel         = -1;
   } _sound_fx[256];

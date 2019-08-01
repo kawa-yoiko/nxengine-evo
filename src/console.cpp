@@ -3,27 +3,27 @@
 
 #include "ObjManager.h"
 #include "game.h"
-#include "graphics/graphics.h"
+#include "graphics/Renderer.h"
 #include "nx.h"
 #include "settings.h"
 #include "statusbar.h"
 #include "tsc.h"
 
-#include <cstdarg>
-using namespace Graphics;
+using namespace NXE::Graphics;
+
 #include "common/misc.h"
-#include "common/stat.h"
+#include "Utils/Logger.h"
 #include "debug.h"
-#include "graphics/font.h"
-#include "graphics/sprites.h"
 #include "map.h"
 #include "p_arms.h"
 #include "player.h"
 #include "playerstats.h"
 #include "sound/SoundManager.h"
 
+#include <cstdarg>
 #include <string>
 #include <vector>
+#include <SDL.h>
 
 #define Respond console.Print
 
@@ -65,7 +65,7 @@ static void __warp(std::vector<std::string> *args, int num)
       stagename += (args->at(i));
     }
 
-    stat("Looking for '%s'", stagename.c_str());
+    LOG_DEBUG("Looking for '%s'", stagename.c_str());
     for (num = 0;; num++)
     {
       if (num >= num_stages)
@@ -151,10 +151,7 @@ static void __giveweapon(std::vector<std::string> *args, int num)
 {
   if (num >= 0 && num < WPN_COUNT)
   {
-    player->weapons[num].hasWeapon = 1;
-    player->weapons[num].maxammo   = 0; // gives it unlimited ammo
-    player->weapons[num].ammo      = 0;
-    player->curWeapon              = num;
+    GetWeapon(num, 100);
   }
 }
 
@@ -287,7 +284,7 @@ static void __spawn(std::vector<std::string> *args, int num)
   // get starting spawn position and spacing
   int x = player->x + ((player->dir == RIGHT) ? (24 * CSFI) : -(24 * CSFI));
   int y = player->y - (16 * CSFI);
-  int w = (sprites[objprop[type].sprite].w + 4) * CSFI;
+  int w = (Renderer::getInstance()->sprites.sprites[objprop[type].sprite].w + 4) * CSFI;
 
   // create 'em
   for (i = 0; i < count; i++)
@@ -612,7 +609,7 @@ void c------------------------------() {}
 
 void DebugConsole::SetVisible(bool newstate)
 {
-  // stat("DebugConsole::SetVisible(%s)", newstate?"true":"false");
+  LOG_DEBUG("DebugConsole::SetVisible({})", newstate ? "true" : "false");
 
   if (fVisible != newstate)
   {
@@ -745,7 +742,7 @@ void DebugConsole::Draw()
 {
   if (fResponse[0])
   {
-    this->DrawText(fResponse);
+    this->DrawDebugText(fResponse);
 
     if (--fResponseTimer <= 0)
       fResponse[0] = 0;
@@ -764,16 +761,16 @@ void DebugConsole::Draw()
 
     sprintf(buffer, "-> %s%c", fLine, (fCursorTimer < 20) ? '_' : ' ');
 
-    this->DrawText(buffer);
+    this->DrawDebugText(buffer);
 
     if (++fCursorTimer > 30)
       fCursorTimer = 0;
   }
 }
 
-void DebugConsole::DrawText(const char *text)
+void DebugConsole::DrawDebugText(const char *text)
 {
-  font_draw(4, (SCREEN_HEIGHT - 16), text, 0xFFAAAA, true);
+  Renderer::getInstance()->font.draw(4, (Renderer::getInstance()->screenHeight - 16), text, 0xFFAAAA, true);
 }
 
 /*
@@ -788,7 +785,7 @@ void DebugConsole::Print(const char *fmt, ...)
   vsnprintf(fResponse, sizeof(fResponse), fmt, ar);
   va_end(ar);
 
-  stat("%s", fResponse);
+  LOG_DEBUG("{}", fResponse);
   fResponseTimer = 60;
 }
 
@@ -798,7 +795,7 @@ void c------------------------------() {}
 
 bool DebugConsole::Execute(const char *line)
 {
-  stat("DebugConsole::Execute('%s')", line);
+  LOG_DEBUG("DebugConsole::Execute('{}')", line);
 
   // record command in backbuffer
   if (!fBackBuffer.empty())
@@ -875,7 +872,7 @@ char *DebugConsole::SplitCommand(const char *line_in, std::vector<std::string> *
 {
   while (*line_in == ' ' || *line_in == '\t')
     line_in++;
-  char *line = strdup(line_in);
+  char *line = SDL_strdup(line_in);
 
   char *cmd = strtok(line, " \t");
   if (cmd && cmd[0])
